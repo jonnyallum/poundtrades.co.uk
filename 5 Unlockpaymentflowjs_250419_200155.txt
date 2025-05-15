@@ -1,0 +1,93 @@
+Here’s the clean and scalable Stripe unlock payment flow, using Firebase Cloud Functions on the backend and the Stripe SDK on the frontend.
+We'll split it into two parts:
+
+1. unlockPaymentFlow.js (Frontend – React Native Stripe Integration)
+This uses the Stripe SDK with Firebase Functions to trigger a £1 payment.
+
+// lib/unlockPaymentFlow.js
+import { useStripe } from '@stripe/stripe-react-native';
+import axios from 'axios';
+
+export const useUnlockPayment = () => {
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+
+  const startUnlockPayment = async (listingId, userId) => {
+    try {
+      const response = await axios.post(
+        'https://YOUR_CLOUD_FUNCTIONS_URL/createUnlockIntent',
+        { listingId, userId }
+      );
+
+      const { paymentIntent, ephemeralKey, customer } = response.data;
+
+      const initResult = await initPaymentSheet({
+        customerId: customer,
+        customerEphemeralKeySecret: ephemeralKey,
+        paymentIntentClientSecret: paymentIntent,
+        merchantDisplayName: 'PoundTrades',
+        allowsDelayedPaymentMethods: false,
+      });
+
+      if (initResult.error) {
+        throw new Error(initResult.error.message);
+      }
+
+      const paymentResult = await presentPaymentSheet();
+      if (paymentResult.error) {
+        throw new Error(paymentResult.error.message);
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.error('Stripe Unlock Payment Error:', err.message);
+      return { success: false, error: err.message };
+    }
+  };
+
+  return { startUnlockPayment };
+};
+
+2. Firebase Cloud Function – createUnlockIntent.js
+
+// functions/index.js (Node.js, Express-style Cloud Function)
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+const stripe = require('stripe')('YOUR_STRIPE_SECRET_KEY');
+admin.initializeApp();
+
+exports.createUnlockIntent = functions.https.onRequest(async (req, res) => {
+  const { listingId, userId } = req.body;
+
+  try {
+    const customer = await stripe.customers.create();
+
+    const ephemeralKey = await stripe.ephemeralKeys.create(
+      { customer: customer.id },
+      { apiVersion: '2023-10-16' }
+    );
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: 100, // £1 in pence
+      currency: 'gbp',
+      customer: customer.id,
+      metadata: {
+        listingId,
+        userId,
+        type: 'unlock',
+      },
+    });
+
+    res.send({
+      paymentIntent: paymentIntent.client_secret,
+      ephemeralKey: ephemeralKey.secret,
+      customer: customer.id,
+    });
+  } catch (error) {
+
+Extras You’ll Want
+
+Save successful unlock to Firestore so users don’t pay twice
+
+Lock contact info behind that gate
+
+UI feedback on payment success/fail (already supported in the ListingDetails component)

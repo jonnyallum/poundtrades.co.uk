@@ -1,0 +1,21 @@
+Alright, let’s connect the Stripe unlock flow into ListingDetails.js and also store the unlock in Firestore so the user only pays once per listing.
+
+1. Update ListingDetails.js to Use the Payment Flow
+Add at the top:
+import { useEffect, useState } from 'react'; import { getDoc, doc, setDoc } from 'firebase/firestore'; import { db } from '../lib/firebase'; import { useUnlockPayment } from '../lib/unlockPaymentFlow'; import { useAuth } from '../lib/auth'; // assuming you have an auth hook 
+Replace the handleUnlock function:
+const { startUnlockPayment } = useUnlockPayment(); const { user } = useAuth(); // Get current user const [unlocked, setUnlocked] = useState(false); const checkUnlockStatus = async () => { const unlockRef = doc(db, 'unlocks', `${user.uid}_${listing.id}`); const docSnap = await getDoc(unlockRef); if (docSnap.exists()) { setUnlocked(true); } }; useEffect(() => { if (user?.uid) checkUnlockStatus(); }, [user]); const handleUnlock = async () => { const result = await startUnlockPayment(listing.id, user.uid); if (result.success) { await setDoc(doc(db, 'unlocks', `${user.uid}_${listing.id}`), { listingId: listing.id, userId: user.uid, unlockedAt: new Date(), }); setUnlocked(true); } else { Alert.alert('Payment Failed', result.error); } }; 
+2. Firestore Data Structure
+This will live in a new collection called unlocks:
+/unlocks/ user123_listing456 (doc ID) - listingId: "listing456" - userId: "user123" - unlockedAt: Timestamp 
+Use this when:
+• Displaying contact info if already paid
+• Skipping payment if user has unlocked before
+3. OPTIONAL: Helper Function (For Other Screens)
+You can reuse this to check unlocks anywhere:
+// lib/firestore.js export const hasUnlocked = async (userId, listingId) => { const unlockRef = doc(db, 'unlocks', `${userId}_${listingId}`); const docSnap = await getDoc(unlockRef); return docSnap.exists(); }; 
+You’re now fully wired:
+• Stripe triggers the £1 payment
+• Unlock recorded in Firestore
+• Contact info shown if user already paid
+Next move? Want CreateListing.js form logic next, or go into user dashboard (My Listings + Favourites)?

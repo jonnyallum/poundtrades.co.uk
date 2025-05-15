@@ -1,0 +1,182 @@
+// screens/CreateListing.js
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+  Alert,
+} from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
+import { db, storage } from '../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useAuth } from '../lib/auth';
+
+const CreateListing = ({ navigation }) => {
+  const { user } = useAuth();
+  const [title, setTitle] = useState('');
+  const [desc, setDesc] = useState('');
+  const [price, setPrice] = useState('');
+  const [sellerType, setSellerType] = useState('public');
+  const [image, setImage] = useState(null);
+  const [boost, setBoost] = useState(false);
+  const [location, setLocation] = useState(null);
+  const [uploading, setUploading] = useState(false);
+
+  const pickImage = async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+    });
+    if (!res.cancelled) setImage(res.assets[0].uri);
+  };
+
+  const getLocation = async () => {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') return;
+    let loc = await Location.getCurrentPositionAsync({});
+    setLocation(loc.coords);
+  };
+
+  const handleSubmit = async () => {
+    if (!title || !desc || !price || !image) {
+      return Alert.alert('Missing info', 'All fields are required.');
+    }
+
+    try {
+      setUploading(true);
+      await getLocation();
+
+      const response = await fetch(image);
+      const blob = await response.blob();
+      const filename = `${user.uid}_${Date.now()}`;
+      const storageRef = ref(storage, `listings/${filename}`);
+      await uploadBytes(storageRef, blob);
+      const imageUrl = await getDownloadURL(storageRef);
+
+      const listingData = {
+        title,
+        description: desc,
+        price,
+        image: imageUrl,
+        sellerType,
+        location,
+        userId: user.uid,
+        createdAt: serverTimestamp(),
+        boosted: boost,
+      };
+
+      await addDoc(collection(db, 'listings'), listingData);
+
+      if (boost) {
+        // You could trigger boost payment flow here
+        Alert.alert('Boost Requested', 'Listing posted. Boost payment coming soon.');
+      }
+
+      setUploading(false);
+      navigation.goBack();
+    } catch (err) {
+      setUploading(false);
+      Alert.alert('Upload Failed', err.message);
+    }
+  };
+
+  return (
+    <ScrollView className="flex-1 bg-black px-4 py-6">
+      <Text className="text-yellow-400 font-bold text-2xl mb-4">Create Listing</Text>
+
+      <TextInput
+        placeholder="Title"
+        placeholderTextColor="#aaa"
+        className="bg-gray-800 text-white rounded-xl p-3 mb-3"
+        value={title}
+        onChangeText={setTitle}
+      />
+      <TextInput
+        placeholder="Description"
+        placeholderTextColor="#aaa"
+        multiline
+        className="bg-gray-800 text-white rounded-xl p-3 mb-3 h-24"
+        value={desc}
+        onChangeText={setDesc}
+      />
+      <TextInput
+        placeholder="Price (£)"
+        placeholderTextColor="#aaa"
+        keyboardType="numeric"
+        className="bg-gray-800 text-white rounded-xl p-3 mb-3"
+        value={price}
+        onChangeText={setPrice}
+      />
+
+      <Text className="text-white mb-1">Seller Type</Text>
+      <View className="flex-row justify-between mb-4">
+        {['public', 'tradesman', 'business'].map((type) => (
+          <TouchableOpacity
+            key={type}
+            onPress={() => setSellerType(type)}
+            className={`px-3 py-2 rounded-xl ${
+              sellerType === type ? 'bg-yellow-500' : 'bg-gray-700'
+            }`}
+          >
+            <Text className="text-white capitalize">{type}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <TouchableOpacity
+        onPress={pickImage}
+        className="bg-yellow-500 rounded-xl py-3 mb-3"
+      >
+        <Text className="text-black text-center font-bold">
+          {image ? 'Change Photo' : 'Upload Photo'}
+        </Text>
+      </TouchableOpacity>
+
+      {image && (
+        <Image source={{ uri: image }} className="w-full h-40 rounded-xl mb-4" />
+      )}
+
+      <TouchableOpacity
+        onPress={() => setBoost(!boost)}
+        className={`p-3 mb-4 rounded-xl ${
+          boost ? 'bg-green-600' : 'bg-gray-800'
+        }`}
+      >
+        <Text className="text-white text-center font-bold">
+          {boost ? 'Boost Selected (£1)' : 'Tick to Boost for £1'}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        disabled={uploading}
+        onPress={handleSubmit}
+        className="bg-yellow-500 py-4 rounded-xl"
+      >
+        <Text className="text-black text-center font-bold">
+          {uploading ? 'Posting...' : 'Post Listing'}
+        </Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+};
+
+export default CreateListing;
+
+Highlights:
+
+Full listing form with validation
+
+Image upload to Firebase Storage
+
+GPS autofill (Expo Location)
+
+Optional “Boost” checkbox
+
+Seller type selector (feeds into colour badges)
+
+Black & yellow UI matching the app style
