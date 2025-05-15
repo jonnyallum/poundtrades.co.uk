@@ -43,8 +43,8 @@ Built with **React Native + Supabase + Stripe**, it supports listings, location,
 
 1. Clone the repository
    ```bash
-   git clone https://github.com/your-username/poundtrades-app.git
-   cd poundtrades-app
+   git clone https://github.com/jonnyallum/poundtrades.co.uk.git
+   cd poundtrades.co.uk
    ```
 
 2. Install dependencies
@@ -62,12 +62,15 @@ Built with **React Native + Supabase + Stripe**, it supports listings, location,
 ## Supabase Setup
 
 1. Create a new Supabase project
-2. Set up the following tables:
-   - `listings`: For storing listing information
-   - `favorites`: For storing user favorites
-   - `unlocks`: For tracking £1 unlocks
+2. Set up the database schema using the SQL files in the `supabase` directory:
+   ```bash
+   # Run schema.sql to create tables and policies
+   # Run seed.sql to populate with sample data
+   ```
 
 ### Database Schema
+
+The database schema is defined in `supabase/schema.sql` and includes:
 
 #### Listings Table
 ```sql
@@ -114,11 +117,67 @@ CREATE TABLE unlocks (
 
 Create a storage bucket named `listings` for storing listing images.
 
+## Admin Accounts and Sample Data
+
+The app comes with scripts to set up admin accounts and populate the database with sample data.
+
+### Admin Accounts
+
+Two admin accounts are pre-configured:
+
+1. **Roger Holman**
+   - Email: roger@poundtrades.co.uk
+   - Password: Theonlywayisup69!
+
+2. **Jonny Allum**
+   - Email: jonny@kliqtmedia.co.uk
+   - Password: Aprilia1
+
+To set up these admin accounts:
+
+1. Get your Supabase service role key from the Supabase dashboard
+2. Add it to your `.env` file as `SUPABASE_SERVICE_ROLE_KEY`
+3. Run the admin setup script:
+   ```bash
+   node scripts/setup-admin-accounts.js
+   ```
+
+### Sample Data
+
+The app includes sample data for:
+- Example listings of building materials
+- User profiles
+- Favorites
+- Unlocks
+
+To populate the database with sample data:
+
+1. Go to the SQL Editor in your Supabase dashboard
+2. Run the `supabase/seed.sql` script
+
 ## Stripe Integration
 
 1. Create a Stripe account and get your publishable key
 2. Add the key to your `.env` file
 3. For production, set up a server to handle payment intents securely
+
+## App Preview
+
+You can view a preview of the app's UI by opening:
+```
+preview/index.html
+```
+
+This shows mockups of all the key screens in the app.
+
+## Documentation
+
+Additional documentation is available in the `docs` directory:
+
+- `app-overview.md` - High-level overview of the app
+- `stripe-unlock-flow.md` - Detailed explanation of the £1 unlock mechanism
+- `supabase-setup-guide.md` - Instructions for setting up Supabase
+- `deployment-guide.md` - Guide for building and deploying the app
 
 ## Contributing
 
