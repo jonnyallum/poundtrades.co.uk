@@ -6,10 +6,10 @@
  * 
  * Usage:
  * 1. Make sure your .env file contains the correct SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
- * 2. Run: node setup-admin-accounts.js
+ * 2. Run: node scripts/setup-admin-accounts.js
  */
 
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 // Initialize Supabase client with service role key (has admin privileges)
