@@ -15,9 +15,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../lib/auth';
 import { getListingsByUser, getFavoriteListings, deleteListing } from '../lib/database';
 import ListingCard from '../components/ListingCard';
+import AdminDashboard from './AdminDashboard';
 
 const Dashboard = ({ navigation }) => {
-  const { user, signOut } = useAuth();
+  const { user, userProfile, isAdmin, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('listings');
   const [userListings, setUserListings] = useState([]);
   const [favorites, setFavorites] = useState([]);
@@ -177,6 +178,10 @@ const Dashboard = ({ navigation }) => {
   const getUserDisplayName = () => {
     if (!user) return 'User';
     
+    if (userProfile?.name) {
+      return userProfile.name;
+    }
+    
     if (user.user_metadata?.full_name) {
       return user.user_metadata.full_name;
     }
@@ -187,6 +192,11 @@ const Dashboard = ({ navigation }) => {
     
     return 'User';
   };
+
+  // If user is admin, show admin dashboard
+  if (isAdmin) {
+    return <AdminDashboard navigation={navigation} />;
+  }
 
   return (
     <View className="flex-1 bg-black">
