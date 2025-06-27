@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { complete28Listings, listingStats } from './data/complete_28_listings.js'
+import { actualRogersListings, actualListingStats } from './data/actual_rogers_listings.js'
 import './App.css'
 
 // Simple Card Component
@@ -88,14 +88,14 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState('All')
 
   // Filter listings based on search and category
-  const filteredListings = complete28Listings.filter(listing => {
+  const filteredListings = actualRogersListings.filter(listing => {
     const matchesSearch = listing.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          listing.description.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = selectedCategory === 'All' || listing.category === selectedCategory
     return matchesSearch && matchesCategory
   })
 
-  const categories = ['All', ...Object.keys(listingStats.categories)]
+  const categories = ['All', ...Object.keys(actualListingStats.categories)]
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -104,12 +104,14 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">
-                <span className="text-yellow-500">£</span>Trades
-              </h1>
+              <img 
+                src="/poundtrades-logo.png" 
+                alt="PoundTrades Logo" 
+                className="h-10 w-auto mr-2"
+              />
             </div>
             <div className="text-sm text-gray-600">
-              {listingStats.totalItems} items • £{listingStats.totalValue} total value
+              {actualListingStats.totalItems} items • £{actualListingStats.totalValue} total value
             </div>
           </div>
         </div>
@@ -123,7 +125,7 @@ function App() {
             Find Quality Construction Materials for <span className="text-yellow-500">Cash</span>
           </h2>
           <p className="text-xl text-gray-600 mb-8">
-            Browse {listingStats.totalItems} items from trusted sellers across the UK
+            Browse {actualListingStats.totalItems} items from trusted sellers across the UK
           </p>
         </div>
 
@@ -144,7 +146,7 @@ function App() {
             >
               {categories.map(category => (
                 <option key={category} value={category}>
-                  {category} {category !== 'All' ? `(${listingStats.categories[category]})` : ''}
+                  {category} {category !== 'All' ? `(${actualListingStats.categories[category]})` : ''}
                 </option>
               ))}
             </select>
@@ -154,7 +156,7 @@ function App() {
         {/* Results Summary */}
         <div className="mb-6">
           <p className="text-gray-600">
-            Showing {filteredListings.length} of {listingStats.totalItems} listings
+            Showing {filteredListings.length} of {actualListingStats.totalItems} listings
             {selectedCategory !== 'All' && ` in ${selectedCategory}`}
             {searchTerm && ` matching "${searchTerm}"`}
           </p>
