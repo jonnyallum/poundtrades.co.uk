@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom'
-import { Button } from '@/components/ui/button.jsx'
-import { Input } from '@/components/ui/input.jsx'
+import { correctedListings, listingStats } from './data/corrected_listings.js'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Search, MapPin, User, Plus, Heart, ShoppingCart, Menu, X } from 'lucide-react'
 import Map from './components/Map.jsx'
-import { listings, categories, getFeaturedListings, getListingsByCategory, getTotalValue } from './data/listings.js'
 import './App.css'
 
 // Import PoundTrades logo
@@ -501,9 +499,9 @@ function App() {
         />
         
         <Routes>
-          <Route path="/" element={<HomePage listings={listings} />} />
-          <Route path="/listings" element={<ListingsPage listings={listings} />} />
-          <Route path="/categories" element={<ListingsPage listings={listings} />} />
+          <Route path="/" element={<HomePage listings={correctedListings} />} />
+          <Route path="/listings" element={<ListingsPage listings={correctedListings} />} />
+          <Route path="/categories" element={<ListingsPage listings={correctedListings} />} />
         </Routes>
 
         <LoginModal 
