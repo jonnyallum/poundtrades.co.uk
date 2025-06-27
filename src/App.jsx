@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom'
-import { correctedListings, listingStats } from './data/corrected_listings.js'
+import { complete28Listings, listingStats } from './data/complete_28_listings.js'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Search, MapPin, User, Plus, Heart, ShoppingCart, Menu, X } from 'lucide-react'
@@ -499,9 +499,9 @@ function App() {
         />
         
         <Routes>
-          <Route path="/" element={<HomePage listings={correctedListings} />} />
-          <Route path="/listings" element={<ListingsPage listings={correctedListings} />} />
-          <Route path="/categories" element={<ListingsPage listings={correctedListings} />} />
+          <Route path="/" element={<HomePage listings={complete28Listings} />} />
+          <Route path="/listings" element={<ListingsPage listings={complete28Listings} />} />
+          <Route path="/categories" element={<ListingsPage listings={complete28Listings} />} />
         </Routes>
 
         <LoginModal 
