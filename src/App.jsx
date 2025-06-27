@@ -6,14 +6,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge.jsx'
 import { Search, MapPin, User, Plus, Heart, ShoppingCart, Menu, X } from 'lucide-react'
 import Map from './components/Map.jsx'
+import { listings, categories, getFeaturedListings, getListingsByCategory, getTotalValue } from './data/listings.js'
 import './App.css'
 
-// Import Roger's photos
+// Import PoundTrades logo
 import poundtradesLogo from './assets/1000013748.png'
-import blueContainer from './assets/1000015617.jpg'
-import adhesiveTubes from './assets/1000015618.jpg'
-import foamCan from './assets/1000015619.jpg'
-import insulation from './assets/1000015620.jpg'
 
 // Mock user authentication
 const useAuth = () => {
@@ -51,103 +48,6 @@ const useAuth = () => {
 
   return { user, login, logout, isLoading }
 }
-
-// Roger's actual listings with correct photo matching
-const rogersListings = [
-  {
-    id: 1,
-    title: "Blue Plastic Container/Tray",
-    description: "Professional blue plastic container/tray, perfect for construction materials storage and organization.",
-    price: 8,
-    category: "Building Materials",
-    image: blueContainer,
-    seller: "Roger Holman",
-    location: "Local Area",
-    condition: "Good",
-    featured: true
-  },
-  {
-    id: 2,
-    title: "PREFORM GAINT Adhesive Tubes",
-    description: "Professional grade PREFORM GAINT adhesive tubes, ideal for construction and repair work.",
-    price: 5,
-    category: "Tools",
-    image: adhesiveTubes,
-    seller: "Roger Holman",
-    location: "Local Area",
-    condition: "New",
-    featured: true
-  },
-  {
-    id: 3,
-    title: "B1 FOAM Expanding Foam Sealant",
-    description: "B1 FOAM expanding foam sealant can, perfect for sealing gaps and insulation work.",
-    price: 5,
-    category: "Building Materials",
-    image: foamCan,
-    seller: "Roger Holman",
-    location: "Local Area",
-    condition: "New",
-    featured: true
-  },
-  {
-    id: 4,
-    title: "SITE Insulation Material",
-    description: "Professional SITE brand insulation material, excellent for construction and renovation projects.",
-    price: 12,
-    category: "Building Materials",
-    image: insulation,
-    seller: "Roger Holman",
-    location: "Local Area",
-    condition: "Good",
-    featured: true
-  },
-  // Additional listings from PDF pricing
-  {
-    id: 5,
-    title: "Wall-tie Mesh",
-    description: "Professional wall-tie mesh for construction reinforcement.",
-    price: 5,
-    category: "Building Materials",
-    image: null,
-    seller: "Roger Holman",
-    location: "Local Area",
-    condition: "Good"
-  },
-  {
-    id: 6,
-    title: "Anchor Bond Adhesive",
-    description: "High-strength anchor bond adhesive for construction applications.",
-    price: 5,
-    category: "Tools",
-    image: null,
-    seller: "Roger Holman",
-    location: "Local Area",
-    condition: "New"
-  },
-  {
-    id: 7,
-    title: "Metal Cleats/Brackets",
-    description: "Durable metal cleats and brackets for construction work.",
-    price: 10,
-    category: "Building Materials",
-    image: null,
-    seller: "Roger Holman",
-    location: "Local Area",
-    condition: "Good"
-  },
-  {
-    id: 8,
-    title: "Professional Spray Paint",
-    description: "High-quality professional spray paint for finishing work.",
-    price: 4,
-    category: "Paint",
-    image: null,
-    seller: "Roger Holman",
-    location: "Local Area",
-    condition: "New"
-  }
-]
 
 // Header Component
 const Header = ({ user, onLogin, onLogout }) => {
@@ -330,12 +230,12 @@ const HomePage = ({ listings }) => {
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-12">Browse by Category</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {['Building Materials', 'Tools', 'Paint', 'Other'].map(category => (
+            {categories.filter(cat => cat !== 'All').map(category => (
               <Card key={category} className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardContent className="p-6 text-center">
                   <h3 className="font-semibold text-lg">{category}</h3>
                   <p className="text-sm text-gray-600 mt-2">
-                    {rogersListings.filter(l => l.category === category).length} items
+                    {getListingsByCategory(category).length} items
                   </p>
                 </CardContent>
               </Card>
@@ -399,12 +299,12 @@ const ListingCard = ({ listing }) => {
           />
         ) : (
           <div className="w-full h-48 bg-gray-200 rounded-t-lg flex items-center justify-center">
-            <span className="text-gray-500">No Image</span>
+            <span className="text-gray-400">No image</span>
           </div>
         )}
         <button 
-          className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:bg-gray-50"
           onClick={() => setIsFavorited(!isFavorited)}
+          className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:bg-gray-50"
         >
           <Heart className={`h-4 w-4 ${isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
         </button>
@@ -416,27 +316,27 @@ const ListingCard = ({ listing }) => {
       </div>
       <CardHeader>
         <CardTitle className="text-lg">{listing.title}</CardTitle>
-        <CardDescription className="line-clamp-2">
+        <CardDescription className="text-sm text-gray-600">
           {listing.description}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-2xl font-bold text-green-600">£{listing.price}</span>
+        <div className="flex items-center justify-between">
+          <span className="text-2xl font-bold text-yellow-600">£{listing.price}</span>
           <Badge variant="outline">{listing.condition}</Badge>
         </div>
-        <div className="flex items-center text-sm text-gray-600 mb-2">
+        <div className="flex items-center mt-2 text-sm text-gray-500">
           <User className="h-4 w-4 mr-1" />
-          {listing.seller}
+          <span>{listing.seller}</span>
         </div>
-        <div className="flex items-center text-sm text-gray-600">
+        <div className="flex items-center mt-1 text-sm text-gray-500">
           <MapPin className="h-4 w-4 mr-1" />
-          {listing.location}
+          <span>{listing.location}</span>
         </div>
       </CardContent>
       <CardFooter>
         <Button className="w-full bg-yellow-400 text-black hover:bg-yellow-400">
-          View Details - £1
+          View Details
         </Button>
       </CardFooter>
     </Card>
@@ -601,9 +501,9 @@ function App() {
         />
         
         <Routes>
-          <Route path="/" element={<HomePage listings={rogersListings} />} />
-          <Route path="/listings" element={<ListingsPage listings={rogersListings} />} />
-          <Route path="/categories" element={<ListingsPage listings={rogersListings} />} />
+          <Route path="/" element={<HomePage listings={listings} />} />
+          <Route path="/listings" element={<ListingsPage listings={listings} />} />
+          <Route path="/categories" element={<ListingsPage listings={listings} />} />
         </Routes>
 
         <LoginModal 
