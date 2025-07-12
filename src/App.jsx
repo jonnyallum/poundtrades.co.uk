@@ -1,10 +1,18 @@
 import { useState } from 'react'
+import { AuthProvider, useAuth } from './hooks/useAuth.jsx'
+import { AuthModal } from './components/auth/AuthModal'
+import { UserMenu } from './components/UserMenu'
+import { Button } from './components/ui/button'
 import { finalRogersListings, finalListingStats } from './data/final_rogers_listings_with_images'
 import './App.css'
 
-function App() {
+function AppContent() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [authMode, setAuthMode] = useState('login')
+
+  const { isAuthenticated, loading } = useAuth()
 
   // Filter listings based on search and category
   const filteredListings = finalRogersListings.filter(listing => {
@@ -20,6 +28,11 @@ function App() {
     ...Object.entries(finalListingStats.categories).map(([name, count]) => ({ name, count }))
   ]
 
+  const openAuthModal = (mode = 'login') => {
+    setAuthMode(mode)
+    setAuthModalOpen(true)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -33,8 +46,45 @@ function App() {
                 className="h-10 w-auto mr-2"
               />
             </div>
-            <div className="text-sm text-yellow-400">
-              {finalListingStats.totalItems} items • £{finalListingStats.totalValue} total value
+            
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-yellow-400">
+                {finalListingStats.totalItems} items • £{finalListingStats.totalValue} total value
+              </div>
+              
+              {!loading && (
+                isAuthenticated ? (
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
+                    >
+                      Add Listing
+                    </Button>
+                    <UserMenu />
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="text-yellow-400 hover:bg-yellow-400 hover:text-black"
+                      onClick={() => openAuthModal('login')}
+                    >
+                      Sign In
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
+                      onClick={() => openAuthModal('signup')}
+                    >
+                      Sign Up
+                    </Button>
+                  </div>
+                )
+              )}
             </div>
           </div>
         </div>
@@ -49,6 +99,25 @@ function App() {
           <p className="text-xl text-gray-600 mb-8">
             Browse {finalListingStats.totalItems} items from trusted sellers across the UK
           </p>
+          
+          {!isAuthenticated && (
+            <div className="flex justify-center space-x-4 mb-8">
+              <Button 
+                size="lg"
+                className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold"
+                onClick={() => openAuthModal('signup')}
+              >
+                Start Selling Today
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg"
+                onClick={() => openAuthModal('login')}
+              >
+                Browse Listings
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Search and Filters */}
@@ -88,7 +157,7 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredListings.map(listing => (
-              <div key={listing.id} className="bg-white rounded-lg shadow-md border overflow-hidden">
+              <div key={listing.id} className="bg-white rounded-lg shadow-md border overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="aspect-w-16 aspect-h-9 bg-gray-200">
                   <img 
                     src={listing.image} 
@@ -100,19 +169,35 @@ function App() {
                   />
                 </div>
                 <div className="p-4">
-                  {listing.featured && (
-                    <span className="inline-block bg-yellow-400 text-black text-xs font-semibold px-2 py-1 rounded mb-2">
-                      Featured
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
+                      {listing.title}
+                    </h3>
+                    <span className="text-lg font-bold text-green-600 ml-2">
+                      £{listing.price}
                     </span>
-                  )}
-                  <h3 className="font-semibold text-lg mb-2">{listing.title}</h3>
-                  <p className="text-gray-600 text-sm mb-3">{listing.description}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-2xl font-bold text-yellow-600">£{listing.price}</span>
-                    <span className="text-sm text-gray-500">{listing.location}</span>
                   </div>
-                  <div className="mt-2 text-xs text-gray-500">
-                    Seller: {listing.seller} • {listing.condition}
+                  <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                    {listing.description}
+                  </p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                      {listing.category}
+                    </span>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        if (!isAuthenticated) {
+                          openAuthModal('login')
+                        } else {
+                          // Handle view listing
+                          console.log('View listing:', listing.id)
+                        }
+                      }}
+                    >
+                      {isAuthenticated ? 'View Details' : 'Sign in to View'}
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -120,7 +205,70 @@ function App() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+              <img 
+                src="/poundtrades-logo.png" 
+                alt="PoundTrades Logo"
+                className="h-8 w-auto mb-4"
+              />
+              <p className="text-gray-400 text-sm">
+                The UK's leading marketplace for construction materials and trade supplies.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-4">For Buyers</h3>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li><a href="#" className="hover:text-white">Browse Listings</a></li>
+                <li><a href="#" className="hover:text-white">Search by Location</a></li>
+                <li><a href="#" className="hover:text-white">Saved Items</a></li>
+                <li><a href="#" className="hover:text-white">Buyer Protection</a></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-4">For Sellers</h3>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li><a href="#" className="hover:text-white">Add Listing</a></li>
+                <li><a href="#" className="hover:text-white">Seller Dashboard</a></li>
+                <li><a href="#" className="hover:text-white">Pricing Guide</a></li>
+                <li><a href="#" className="hover:text-white">Seller Tips</a></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Support</h3>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li><a href="#" className="hover:text-white">Help Center</a></li>
+                <li><a href="#" className="hover:text-white">Contact Us</a></li>
+                <li><a href="#" className="hover:text-white">Terms of Service</a></li>
+                <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
+            <p>&copy; 2025 PoundTrades. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        initialMode={authMode}
+      />
     </div>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   )
 }
 
