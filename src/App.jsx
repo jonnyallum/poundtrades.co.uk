@@ -6,7 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './com
 import { Badge } from './components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs'
-import { Search, MapPin, Heart, User, Home, List, Star, MoreHorizontal } from 'lucide-react'
+import { Textarea } from './components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select'
+import { Search, MapPin, Heart, User, Home, List, Star, MoreHorizontal, Plus, Upload, X } from 'lucide-react'
 import './App.css'
 
 function App() {
@@ -21,6 +23,19 @@ function App() {
   const [authMode, setAuthMode] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  
+  // Create Listing Modal State
+  const [createListingModalOpen, setCreateListingModalOpen] = useState(false)
+  const [listingForm, setListingForm] = useState({
+    title: '',
+    description: '',
+    price: '',
+    category_id: '',
+    location: '',
+    images: []
+  })
+  const [uploadedImages, setUploadedImages] = useState([])
+  const [createListingLoading, setCreateListingLoading] = useState(false)
 
   // Load data on component mount
   useEffect(() => {
@@ -91,6 +106,100 @@ function App() {
   const handleSignOut = async () => {
     await authService.signOut()
     setUser(null)
+  }
+
+  // Handle image upload
+  const handleImageUpload = (event) => {
+    const files = Array.from(event.target.files)
+    const newImages = []
+    
+    files.forEach(file => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          const imageData = {
+            file: file,
+            preview: e.target.result,
+            name: file.name
+          }
+          newImages.push(imageData)
+          setUploadedImages(prev => [...prev, imageData])
+        }
+        reader.readAsDataURL(file)
+      }
+    })
+  }
+
+  // Remove uploaded image
+  const removeImage = (index) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Handle create listing
+  const handleCreateListing = async (e) => {
+    e.preventDefault()
+    if (!user) {
+      alert('Please sign in to create a listing')
+      return
+    }
+
+    setCreateListingLoading(true)
+    
+    try {
+      // Prepare listing data
+      const listingData = {
+        title: listingForm.title,
+        description: listingForm.description,
+        price: parseFloat(listingForm.price),
+        category_id: listingForm.category_id,
+        location: listingForm.location,
+        user_id: user.id,
+        status: 'available',
+        images: uploadedImages.map(img => img.preview) // For now, store base64 images
+      }
+
+      // Create listing in Supabase
+      const { data, error } = await listingsService.createListing(listingData)
+      
+      if (error) {
+        throw error
+      }
+
+      alert('Listing created successfully!')
+      
+      // Reset form
+      setListingForm({
+        title: '',
+        description: '',
+        price: '',
+        category_id: '',
+        location: '',
+        images: []
+      })
+      setUploadedImages([])
+      setCreateListingModalOpen(false)
+      
+      // Reload listings
+      loadListings()
+      
+    } catch (error) {
+      alert('Failed to create listing: ' + error.message)
+    }
+    
+    setCreateListingLoading(false)
+  }
+
+  // Reset create listing form
+  const resetCreateListingForm = () => {
+    setListingForm({
+      title: '',
+      description: '',
+      price: '',
+      category_id: '',
+      location: '',
+      images: []
+    })
+    setUploadedImages([])
   }
 
   // Search handler
@@ -334,6 +443,14 @@ function App() {
             <div className="flex items-center space-x-4">
               {user ? (
                 <div className="flex items-center space-x-2">
+                  <Button 
+                    onClick={() => setCreateListingModalOpen(true)}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                    size="sm"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Create Listing
+                  </Button>
                   <span className="text-white">Welcome, {user.email}</span>
                   <Button onClick={handleSignOut} variant="outline" size="sm">
                     Sign Out
@@ -442,6 +559,148 @@ function App() {
               }
             </button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Listing Modal */}
+      <Dialog open={createListingModalOpen} onOpenChange={(open) => {
+        setCreateListingModalOpen(open)
+        if (!open) resetCreateListingForm()
+      }}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-center">Create New Listing</DialogTitle>
+            <DialogDescription className="text-center">
+              List your construction materials for sale
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleCreateListing} className="space-y-6">
+            {/* Title */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Title *</label>
+              <Input
+                placeholder="e.g., Reclaimed Oak Beams"
+                value={listingForm.title}
+                onChange={(e) => setListingForm({...listingForm, title: e.target.value})}
+                required
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Description *</label>
+              <Textarea
+                placeholder="Describe your materials, condition, dimensions, etc."
+                value={listingForm.description}
+                onChange={(e) => setListingForm({...listingForm, description: e.target.value})}
+                rows={4}
+                required
+              />
+            </div>
+
+            {/* Price and Category Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Price (£) *</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={listingForm.price}
+                  onChange={(e) => setListingForm({...listingForm, price: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Category *</label>
+                <Select 
+                  value={listingForm.category_id} 
+                  onValueChange={(value) => setListingForm({...listingForm, category_id: value})}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.filter(cat => cat.id !== 'all').map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Location */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Location *</label>
+              <Input
+                placeholder="e.g., Manchester, UK"
+                value={listingForm.location}
+                onChange={(e) => setListingForm({...listingForm, location: e.target.value})}
+                required
+              />
+            </div>
+
+            {/* Image Upload */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Photos</label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-600 mb-2">Upload photos of your materials</p>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('image-upload').click()}
+                >
+                  Choose Files
+                </Button>
+              </div>
+
+              {/* Image Previews */}
+              {uploadedImages.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                  {uploadedImages.map((image, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={image.preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Submit Button */}
+            <Button 
+              type="submit" 
+              className="w-full bg-yellow-500 hover:bg-yellow-600 text-black"
+              disabled={createListingLoading}
+            >
+              {createListingLoading ? 'Creating Listing...' : 'Create Listing'}
+            </Button>
+          </form>
         </DialogContent>
       </Dialog>
 
