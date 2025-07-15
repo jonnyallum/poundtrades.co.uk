@@ -44,6 +44,35 @@ function App() {
     checkUser()
   }, [])
 
+  // Set up real-time subscription for listings
+  useEffect(() => {
+    console.log('🔄 Setting up real-time subscription for listings...')
+    
+    const subscription = supabase
+      .channel('listings-updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'listings' },
+        (payload) => {
+          console.log('🔄 Real-time listing change detected:', payload)
+          // Force cache busting by reloading listings
+          loadListings()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      console.log('🔄 Cleaning up real-time subscription')
+      supabase.removeChannel(subscription)
+    }
+  }, [selectedCategory, searchTerm]) // Re-subscribe when filters change
+
+  // Load listings when filters change
+  useEffect(() => {
+    console.log('🔄 Filter changed, reloading listings...', { selectedCategory, searchTerm })
+    loadListings()
+  }, [selectedCategory, searchTerm])
+
   // Check current user
   const checkUser = async () => {
     const { user } = await authService.getCurrentUser()
@@ -56,15 +85,31 @@ function App() {
     setCategories([{ id: 'all', name: 'All', description: 'All categories' }, ...data])
   }
 
-  // Load listings
+  // Load listings with cache busting
   const loadListings = async () => {
+    console.log('🔍 Loading listings...', { selectedCategory, searchTerm })
     setLoading(true)
+    
+    // Clear existing listings for cache busting
+    setListings([])
+    
     const filters = {
       category: selectedCategory !== 'All' ? selectedCategory : null,
       search: searchTerm || null
     }
-    const { data } = await listingsService.getListings(filters)
-    setListings(data)
+    console.log('📋 Filters:', filters)
+    
+    const { data, error } = await listingsService.getListings(filters)
+    console.log('📊 Listings response:', { data, error, count: data?.length })
+    
+    if (error) {
+      console.error('❌ Error loading listings:', error)
+      setListings([])
+    } else {
+      console.log('✅ Fetched listings:', data)
+      setListings(data || [])
+    }
+    
     setLoading(false)
   }
 
@@ -209,8 +254,9 @@ function App() {
 
   // Category filter handler
   const handleCategoryChange = (category) => {
+    console.log('🎯 Category changed to:', category)
     setSelectedCategory(category)
-    setTimeout(loadListings, 100)
+    // loadListings will be triggered by useEffect when selectedCategory changes
   }
 
   // Render home page
@@ -306,18 +352,51 @@ function App() {
       </div>
 
       {loading ? (
-        <div className="text-center py-8">Loading listings...</div>
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
+          <span className="ml-2 text-gray-600">Loading listings...</span>
+        </div>
+      ) : listings.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500 text-lg">No listings found</p>
+          <p className="text-gray-400 text-sm mt-2">Try adjusting your filters or check back later</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {listings.map((listing) => (
             <Card key={listing.id} className="hover:shadow-lg transition-shadow">
+              {/* Display image if available */}
+              {listing.images && listing.images.length > 0 && (
+                <div className="aspect-video w-full overflow-hidden rounded-t-lg">
+                  <img 
+                    src={listing.images[0]} 
+                    alt={listing.title}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDIwMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTIwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NS4zMzMzIDUwSDExNC42NjdWNjBIODUuMzMzM1Y1MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHA+CjwvcGF0aD4KPC9zdmc+';
+                      e.target.onerror = null;
+                    }}
+                  />
+                </div>
+              )}
+              
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="text-lg">{listing.title}</CardTitle>
                     <CardDescription className="mt-2">{listing.description}</CardDescription>
                   </div>
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      // Toggle favorite functionality
+                      console.log('Favorited listing:', listing.id);
+                      // TODO: Implement favorite functionality
+                    }}
+                    className="hover:text-red-500"
+                  >
                     <Heart className="h-4 w-4" />
                   </Button>
                 </div>
@@ -336,8 +415,15 @@ function App() {
                     <MapPin className="h-4 w-4 mr-1" />
                     {listing.location}
                   </div>
-                  <Button className="w-full bg-yellow-500 hover:bg-yellow-600 text-black">
-                    View Details - £1
+                  <Button 
+                    className="w-full bg-yellow-500 hover:bg-yellow-600 text-black"
+                    onClick={() => {
+                      // View details functionality
+                      console.log('Viewing details for listing:', listing.id);
+                      // TODO: Implement view details modal or navigation
+                    }}
+                  >
+                    View Details - £{listing.price}
                   </Button>
                 </div>
               </CardContent>
@@ -568,7 +654,14 @@ function App() {
         if (!open) resetCreateListingForm()
       }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+          <DialogHeader className="relative">
+            <button
+              onClick={() => setCreateListingModalOpen(false)}
+              className="absolute right-0 top-0 p-2 hover:bg-gray-100 rounded-full transition-colors"
+              type="button"
+            >
+              <X className="h-4 w-4" />
+            </button>
             <DialogTitle className="text-center">Create New Listing</DialogTitle>
             <DialogDescription className="text-center">
               List your construction materials for sale

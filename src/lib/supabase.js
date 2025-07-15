@@ -10,43 +10,67 @@ export const listingsService = {
   // Get all listings with category and seller details
   async getListings(filters = {}) {
     try {
+      console.log('🔍 getListings called with filters:', filters)
+      
       let query = supabase
         .from('listings')
         .select(`
           *,
           categories(name, description)
         `)
-        .eq('status', 'active')
+        .eq('status', 'available')
         .order('created_at', { ascending: false })
 
+      // Handle category filtering with detailed logging
       if (filters.category && filters.category !== 'All') {
-        const { data: categoryData } = await supabase
-          .from('categories')
-          .select('id')
-          .eq('name', filters.category)
-          .single()
+        console.log('🎯 Applying category filter for:', filters.category)
         
-        if (categoryData) {
-          query = query.eq('category_id', categoryData.id)
+        try {
+          const { data: categoryData, error: categoryError } = await supabase
+            .from('categories')
+            .select('id')
+            .eq('name', filters.category)
+            .single()
+          
+          console.log('📋 Category lookup result:', { categoryData, categoryError })
+          
+          if (categoryError) {
+            console.error('❌ Category lookup error:', categoryError)
+          } else if (categoryData && categoryData.id) {
+            console.log('✅ Found category ID:', categoryData.id)
+            query = query.eq('category_id', categoryData.id)
+            console.log('🔧 Applied category filter to query')
+          } else {
+            console.warn('⚠️ No category found for name:', filters.category)
+          }
+        } catch (categoryLookupError) {
+          console.error('❌ Exception in category lookup:', categoryLookupError)
         }
+      } else {
+        console.log('📋 No category filter applied (showing all)')
       }
 
       if (filters.search) {
+        console.log('🔍 Applying search filter:', filters.search)
         query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
       }
 
       if (filters.location) {
+        console.log('📍 Applying location filter:', filters.location)
         query = query.ilike('location', `%${filters.location}%`)
       }
 
       if (filters.minPrice) {
+        console.log('💰 Applying min price filter:', filters.minPrice)
         query = query.gte('price', filters.minPrice)
       }
 
       if (filters.maxPrice) {
+        console.log('💰 Applying max price filter:', filters.maxPrice)
         query = query.lte('price', filters.maxPrice)
       }
 
+      console.log('🚀 Executing final query...')
       const { data, error } = await query
 
       if (error) {
